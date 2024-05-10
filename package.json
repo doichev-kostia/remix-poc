@@ -1,6 +1,5 @@
 {
   "name": "remix-poc",
-  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "start": "tsx cmd/web/server.ts --dev-server=false",
@@ -8,9 +7,8 @@
     "build": "remix vite:build",
     "migrate": "node --import=tsx ./migrate.ts"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "Kostiantyn Doichev",
+  "license": "MIT",
   "packageManager": "pnpm@9.1.0+sha256.22e36fba7f4880ecf749a5ca128b8435da085ecd49575e7fb9e64d6bf4fad394",
   "dependencies": {
     "@effect/schema": "^0.66.14",
