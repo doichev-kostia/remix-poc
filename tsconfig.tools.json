@@ -1,0 +1,7 @@
+{
+  "extends": "@doichev-kostia/config/tsconfig.json",
+  "compilerOptions": {
+  },
+  "include": ["vite.config.ts"],
+  "exclude": ["node_modules", "dist", "build"]
+}
