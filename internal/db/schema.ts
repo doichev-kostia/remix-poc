@@ -14,7 +14,6 @@ import {
 import { castToEnum, cuid, id, timestamps, workspaceID } from "~/internal/db/sql.js";
 import type { ValueOf } from "type-fest";
 
-
 export const accounts = pgTable("accounts", {
 	...id,
 	...timestamps,

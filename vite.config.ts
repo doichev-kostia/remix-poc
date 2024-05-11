@@ -8,11 +8,11 @@ installGlobals();
 export default defineConfig({
 	plugins: [remix()],
 	optimizeDeps: {
-		exclude: ["@node-rs/argon2"]
+		exclude: ["@node-rs/argon2", "node:async_hooks"]
 	},
 	build: {
 		rollupOptions: {
-			external: ["@node-rs/argon2"]
+			external: ["@node-rs/argon2", "node:async_hooks"]
 		},
 	},
 	resolve: {

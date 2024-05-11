@@ -10,6 +10,14 @@ export class ContextNotFoundError extends Error {
 	}
 }
 
+export class ContextNoDefaultError extends Error {
+	readonly code = ErrorCode;
+
+	constructor(public name: string) {
+		super(`${name} context has no default value.`);
+	}
+}
+
 export type Context<T> = ReturnType<typeof create<T>>;
 
 export function create<T>(name: string) {
@@ -17,6 +25,10 @@ export function create<T>(name: string) {
 
 	const ctx = {
 		name,
+		defaultValue: undefined as T | undefined,
+		withDefault(value: T) {
+			this.defaultValue = value;
+		},
 		with<Result>(value: T, cb: (value: T) => Result) {
 			return storage.run(value, () => {
 				return cb(value);

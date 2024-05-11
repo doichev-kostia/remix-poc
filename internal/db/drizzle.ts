@@ -1,10 +1,16 @@
-import { drizzle } from "drizzle-orm/node-postgres";
-import { config } from "~/internal/config.js";
+import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
 
 import pg from "pg";
 
-const pool = new pg.Pool({
-	connectionString: config.DB_URL,
-});
+export function initDB(connectionURI: string) {
+	const pool = new pg.Pool({
+		connectionString: connectionURI,
+	});
 
-export const db = drizzle(pool);
+	const db = drizzle(pool);
+
+	return db
+}
+
+
+export type DB = NodePgDatabase<Record<string, never>>;

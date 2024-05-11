@@ -5,7 +5,7 @@ import { Button } from "~/app/ui/button.js";
 import { Form, useActionData } from "@remix-run/react";
 import { type ActionFunctionArgs, json, redirect, type TypedResponse } from "@remix-run/node";
 import { cn } from "~/app/lib/utils.js";
-import { type NonExistingIdentifier, UserRepository, type ValidPassword } from "~/internal/repositories/user/user.js";
+import { type NonExistingIdentifier, type ValidPassword } from "~/internal/store/account/account.js";
 import { IDENTIFIER_TYPE } from "~/internal/db/schema.js";
 import * as E from "effect/Either";
 import { z } from "zod";
@@ -30,7 +30,7 @@ const ValidationSchema = z.object({
 
 type Values = z.infer<typeof ValidationSchema>;
 
-export async function action({request}: ActionFunctionArgs): Promise<TypedResponse<{
+export async function action({request, context }: ActionFunctionArgs): Promise<TypedResponse<{
 	formError: string;
 	fieldErrors: Record<string, string>
 }>> {
@@ -47,7 +47,7 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
 		password: ValidPassword;
 	};
 
-	const exists = await UserRepository.identifierExists(IDENTIFIER_TYPE.email, values.email);
+	const exists = await context.accountStore.identifierExists(IDENTIFIER_TYPE.email, values.email);
 
 	if (E.isLeft(exists)) {
 		return json({formError: "Internal Error", fieldErrors: {}}, {
@@ -61,10 +61,9 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
 		});
 	}
 
-	const user = await UserRepository.createUser({
+	const user = await context.accountStore.createAccount({
 		firstName: values.firstName,
 		lastName: values.lastName,
-		password: values.password,
 		identifier: {
 			type: IDENTIFIER_TYPE.email,
 			value: values.email as NonExistingIdentifier,
