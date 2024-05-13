@@ -1,6 +1,6 @@
 import { ZodError } from "zod";
 
-export function newFormValidationError(error: Error): { formError: string; fieldErrors: Record<string, string>} {
+export function newFormError(error: Error): { formError: string; fieldErrors: Record<string, string>} {
 	if (!(error instanceof ZodError)) {
 		return {
 			formError: error.message,

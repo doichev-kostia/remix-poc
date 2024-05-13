@@ -1,8 +1,7 @@
 import { migrate } from "drizzle-orm/node-postgres/migrator";
-import { initDB } from "~/internal/db/drizzle.js";
 import * as assert from "node:assert";
+import { db } from "~/internal/db/drizzle.js";
 
-assert.ok(process.env.DB_URL)
-const db = initDB(process.env.DB_URL!)
+assert.ok(process.env.DB_URI)
 
 await migrate(db, { migrationsFolder: "migrations" })

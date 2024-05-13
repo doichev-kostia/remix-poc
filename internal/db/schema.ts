@@ -2,7 +2,7 @@ import {
 	char,
 	foreignKey,
 	index,
-	integer,
+	integer, jsonb,
 	pgEnum,
 	pgTable,
 	primaryKey,
@@ -14,16 +14,6 @@ import {
 import { castToEnum, cuid, id, timestamps, workspaceID } from "~/internal/db/sql.js";
 import type { ValueOf } from "type-fest";
 
-export const accounts = pgTable("accounts", {
-	...id,
-	...timestamps,
-	firstName: varchar("first_name", {length: 255}).notNull(),
-	lastName: varchar("last_name", {length: 255}).notNull(),
-	primaryEmail: varchar("primary_email", { length: 255 }).notNull(), // ONLY EMAIL!
-}, (table) => ({
-	primaryEmailFK: foreignKey({ columns: [table.primaryEmail], foreignColumns: [identifiers.value] }).onUpdate("cascade").onDelete("restrict")
-}));
-
 export const IDENTIFIER_TYPE = {
 	email: "email",
 	oauthGoogle: "oauth_google",
@@ -33,6 +23,16 @@ export const IDENTIFIER_TYPE = {
 export type IdentifierType = ValueOf<typeof IDENTIFIER_TYPE>
 
 export const identifierTypeEnum = pgEnum("identifier_type", castToEnum(IDENTIFIER_TYPE));
+
+
+export const accounts = pgTable("accounts", {
+	...id,
+	...timestamps,
+	firstName: varchar("first_name", {length: 255}).notNull(),
+	lastName: varchar("last_name", {length: 255}).notNull(),
+	password: varchar("password", {length: 255}),
+	preferences: jsonb("preferences").notNull().default('{}')
+});
 
 export const identifiers = pgTable("identifiers", {
 	...timestamps,
@@ -80,7 +80,7 @@ export const INVITE_STATUS = {
 } as const;
 
 export type InviteStatus = ValueOf<typeof INVITE_STATUS>;
-export const inviteStatusEnum = pgEnum("invite_status", castToEnum(INVITE_STATUS))
+export const inviteStatusEnum = pgEnum("invite_status", castToEnum(INVITE_STATUS));
 
 export const invites = pgTable("invites", {
 	...timestamps,
@@ -92,7 +92,10 @@ export const invites = pgTable("invites", {
 	membershipID: cuid("membership_id").notNull(),
 }, (table) => ({
 	pk: primaryKey({columns: [table.membershipID, table.workspaceID]}),
-	membershipFK: foreignKey({columns: [table.membershipID], foreignColumns: [memberships.id]}).onDelete("cascade"),
+	membershipFK: foreignKey({
+		columns: [table.membershipID, table.workspaceID],
+		foreignColumns: [memberships.id, memberships.workspaceID]
+	}).onDelete("cascade"),
 	workspaceFK: foreignKey({columns: [table.workspaceID], foreignColumns: [workspaces.id]}).onDelete("cascade"),
 	expireTimeIdx: index("idx_invites_expire_time").on(table.expireTime),
 	emailIdx: index("idx_invites_email").on(table.email),

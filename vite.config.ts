@@ -19,5 +19,8 @@ export default defineConfig({
 		alias: {
 			"~": path.resolve(".")
 		}
+	},
+	server: {
+		port: 3000
 	}
 });

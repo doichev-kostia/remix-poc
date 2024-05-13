@@ -25,10 +25,6 @@ export function create<T>(name: string) {
 
 	const ctx = {
 		name,
-		defaultValue: undefined as T | undefined,
-		withDefault(value: T) {
-			this.defaultValue = value;
-		},
 		with<Result>(value: T, cb: (value: T) => Result) {
 			return storage.run(value, () => {
 				return cb(value);

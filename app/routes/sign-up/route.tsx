@@ -3,14 +3,16 @@ import { Label } from "~/app/ui/label.js";
 import { Input } from "~/app/ui/input.js";
 import { Button } from "~/app/ui/button.js";
 import { Form, useActionData } from "@remix-run/react";
-import { type ActionFunctionArgs, json, redirect, type TypedResponse } from "@remix-run/node";
+import { type ActionFunctionArgs, createCookie, json, redirect, type TypedResponse } from "@remix-run/node";
 import { cn } from "~/app/lib/utils.js";
-import { type NonExistingIdentifier, type ValidPassword } from "~/internal/store/account/account.js";
+import { AccountStore, type NonExistingIdentifier, type ValidPassword } from "~/internal/store/account.js";
 import { IDENTIFIER_TYPE } from "~/internal/db/schema.js";
 import * as E from "effect/Either";
 import { z } from "zod";
-import { STATUS_CODE } from "~/cmd/web/http.js";
-import { newFormValidationError } from "~/app/.server/validation.js";
+import { newFormError } from "~/app/.server/validation.js";
+import { STATUS_CODE } from "~/app/http.js";
+import { logger } from "~/app/.server/logger.js";
+import { createAppStateCookie, createAuthCookie, createJWT } from "~/app/auth.js";
 
 const PASSWORD_MIN_LENGTH = 8;
 const NAME_MIN_LENGTH = 2;
@@ -25,12 +27,12 @@ const ValidationSchema = z.object({
 	firstName: z.string().min(NAME_MIN_LENGTH),
 	lastName: z.string().min(NAME_MIN_LENGTH),
 	email: z.string().email(),
-	password: z.string().min(PASSWORD_MIN_LENGTH)
+	password: z.string().min(PASSWORD_MIN_LENGTH).brand<ValidPassword>()
 });
 
 type Values = z.infer<typeof ValidationSchema>;
 
-export async function action({request, context }: ActionFunctionArgs): Promise<TypedResponse<{
+export async function action({ request }: ActionFunctionArgs): Promise<TypedResponse<{
 	formError: string;
 	fieldErrors: Record<string, string>
 }>> {
@@ -38,7 +40,7 @@ export async function action({request, context }: ActionFunctionArgs): Promise<T
 	const parsed = ValidationSchema.safeParse(Object.fromEntries(data));
 
 	if (!parsed.success) {
-		return json(newFormValidationError(parsed.error), {
+		return json(newFormError(parsed.error), {
 			status: STATUS_CODE.badRequest
 		});
 	}
@@ -47,9 +49,10 @@ export async function action({request, context }: ActionFunctionArgs): Promise<T
 		password: ValidPassword;
 	};
 
-	const exists = await context.accountStore.identifierExists(IDENTIFIER_TYPE.email, values.email);
+	const exists = await AccountStore.identifierExists(IDENTIFIER_TYPE.email, values.email);
 
 	if (E.isLeft(exists)) {
+		logger.error(exists.left, "Failed to check whether the email exists")
 		return json({formError: "Internal Error", fieldErrors: {}}, {
 			status: STATUS_CODE.internalServerError,
 		});
@@ -61,22 +64,50 @@ export async function action({request, context }: ActionFunctionArgs): Promise<T
 		});
 	}
 
-	const user = await context.accountStore.createAccount({
+	const account = await AccountStore.createEmailAccount({
 		firstName: values.firstName,
 		lastName: values.lastName,
-		identifier: {
-			type: IDENTIFIER_TYPE.email,
-			value: values.email as NonExistingIdentifier,
-		}
+		password: values.password,
+		email: values.email as NonExistingIdentifier,
 	});
 
-	if (E.isLeft(user)) {
+	if (E.isLeft(account)) {
+		logger.error(account.left, "Failed to create an account");
 		return json({formError: "Internal Error", fieldErrors: {}}, {
 			status: STATUS_CODE.internalServerError,
 		});
 	}
 
-	return redirect("/");
+	const accountID = account.right.id;
+	logger.info("account %s was created", accountID);
+
+	const token = await createJWT({
+		type: "account",
+		properties: {
+			accountID
+		}
+	});
+
+	const authCookie = await createAuthCookie({ [accountID]: token });
+	const stateCookie = await createAppStateCookie({
+		currentAccountID: accountID,
+		currentMemberID: "",
+		accounts: {
+			[accountID]: {
+				id: accountID,
+				displayName: account.right.firstName  + " " + account.right.lastName,
+				memberships: {}
+			}
+		}
+	});
+
+	const headers = new Headers();
+	headers.append("Set-Cookie", authCookie);
+	headers.append("Set-Cookie", stateCookie);
+
+	return redirect("/join", {
+		headers
+	});
 }
 
 function SignUpPage() {
